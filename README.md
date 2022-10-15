@@ -1,11 +1,12 @@
+# Introduction 
+
+A solidity voting smart contract 
+
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
 - [Prerequisites...](#prerequisites)
-- [How to run code in this github repository](#how-to-run-code-in-this-github-repository)
-  - [Running](#running)
-  - [Debugging](#debugging)
-- [See also:](#see-also)
+- [Clone this github repository](#Clone-this-github-repository)
 
 <!-- markdown-toc end -->
 
