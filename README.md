@@ -35,3 +35,6 @@ Now just run from inside the `solidity_voting_smart_contract` folder
 $ code .
 ```
 
+On mac osx : Please eemove node_module from :
+Solidity: Package Default Dependencies Directory
+To avoid error not found: File import callback not supported
