@@ -46,20 +46,19 @@ contract Voting is Ownable {
     mapping (address => Voter) public listVoter;
     address[] public listAddress;
     Proposal[] public listProposal;
+    string[] public proposalTable;
 
     event VoterRegistered(address voterAddress); 
     event WorkflowStatusChange(WorkflowStatus previousStatus, WorkflowStatus newStatus);
     event ProposalRegistered(uint proposalId);
     event Voted (address voter, uint proposalId);
 
-    function getWinner() public view returns (address) {
-
-    }
-
     /** Add a voter, only possible by the Admin */
     function addVoter(address _address) public onlyOwner {
+        require(_address != address(0),"Invalid address !");
         listVoter[_address].isRegistered = true;
         listAddress.push(_address);
+        emit VoterRegistered(_address);
     }
 
     /** Initialize or reset the current workflow 
@@ -85,8 +84,10 @@ contract Voting is Ownable {
         }
     }
 
-
+    /* Just switch to the next state */
     function nextWorkflow() public onlyOwner {
+        WorkflowStatus previousState = currentState;
+
         /* Are we, at the end of the flow ? */ 
         if ( uint(currentState) >= uint(WorkflowStatus.VotesTallied) )
             /* yes reset to the initial state */
@@ -94,6 +95,8 @@ contract Voting is Ownable {
         else    
             /* increment to the next state */
             currentState = WorkflowStatus(uint(currentState)+1);
+
+        emit WorkflowStatusChange(previousState, currentState);    
     }
 
 
@@ -113,4 +116,91 @@ contract Voting is Ownable {
         else 
             return "unknown state";
     }
+
+    /* check this is an authorized voter */
+    modifier checkVoter() {
+        require (listVoter[msg.sender].isRegistered, "You are not allowed to call this function");
+        _;
+    }
+
+    /* check the current state */
+    modifier checkState(WorkflowStatus _state) {
+        require (currentState == _state, "You c'ant do that at that state");
+        _;
+    }
+
+    /* check the proposal number */
+    modifier checkValidProposal(uint _proposalNum) {
+        require (_proposalNum < listProposal.length, "Invalid proposition number !");
+        _;
+    }
+
+    /** Function to add a proposal
+     *  only for voters and if we are in the Proposal state 
+     */
+    function addProposal(string memory _proposition) public checkState(WorkflowStatus.ProposalsRegistrationStarted) checkVoter {
+        Proposal memory proposal;
+
+        proposal.description = _proposition;
+        proposal.voteCount = 0;
+
+        listProposal.push(proposal);
+        emit ProposalRegistered(listProposal.length);
+    }
+
+    /** Function to get all proposals
+     *  only for voters and if we are in the Voting Session started 
+     */
+    function getProposal() public checkState(WorkflowStatus.VotingSessionStarted) checkVoter returns (string[] memory) {        
+        for (uint i; i<listProposal.length;i++) {
+            proposalTable.push(listProposal[i].description);
+        }
+
+        return proposalTable;
+    }
+
+    /** Function to get all proposals
+     *  only for voters and if we are in the Voting Session started 
+     */
+    function getStProposal() public view checkState(WorkflowStatus.VotingSessionStarted) checkVoter returns (Proposal[] memory) {        
+        return listProposal;
+    }
+
+    /** Function to vote, restricted to 
+     * a registered voter 
+     * with a valid proposal ID 
+     * In a correct state 
+     * a voter that has not voted yet !
+     */
+    function vote(uint proposalNumber) public checkState(WorkflowStatus.VotingSessionStarted) checkVoter checkValidProposal(proposalNumber) {        
+        require(listVoter[msg.sender].hasVoted == false, "You've already voted !");
+        listProposal[proposalNumber].voteCount++;
+        listVoter[msg.sender].hasVoted = true;
+        listVoter[msg.sender].votedProposalId = proposalNumber;
+        emit Voted (msg.sender, proposalNumber);
+    }
+
+    /** Get the vote result
+     */
+    function getWinner() public view checkState(WorkflowStatus.VotesTallied) onlyOwner returns (uint) { 
+        require (listProposal.length>0, "There are no proposal !");
+
+        uint maxCount;
+        uint maxCountIdx;
+        bool solutionFound = false;
+
+        /* Check wich proposal has the maximum votes - if ex-aequo take the first one in the list */       
+        for (uint i; i<listProposal.length;i++) {
+            if ( listProposal[i].voteCount > maxCount ) {
+                maxCount = listProposal[i].voteCount;
+                maxCountIdx = i;
+                solutionFound = true;
+            }
+        }
+
+        /* Check if we've found a solution ? */
+        require (solutionFound, "Nobody voted !");
+
+        return maxCountIdx;
+    }    
 }
