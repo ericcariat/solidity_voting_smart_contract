@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0
 // Please see styleguide from https://docs.soliditylang.org/en/v0.8.16/style-guide.html
 // Usage : 
-// 1. Owner : addVoter
-// 2. Owner : initWorkflow
-// 3. Voters : ....
+// 1. Owner : initWorkflow -> RegisteringVoters
+// 2. Owner : addVoter with address
+// 3. Owner : nextWorkflow -> ProposalsRegistrationStarted
+// 4. Voters : addProposal with a string
+// 5. Owner : nextWorkflow -> ProposalsRegistrationEnded
+// 6. Owner : nextWorkflow -> VotingSessionStarted
+// 7. Voters : 
+// 8. Owner : nextWorkflow -> VotingSessionEnded
+// 9. Owner : getWinner
 
 pragma solidity 0.8.17;
 
