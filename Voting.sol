@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0
 // Please see styleguide from https://docs.soliditylang.org/en/v0.8.16/style-guide.html
 // Usage : 
-// 1. Owner : initWorkflow -> RegisteringVoters
+// 1. Owner : initWorkflow (-> RegisteringVoters)
 // 2. Owner : addVoter with address
-// 3. Owner : nextWorkflow -> ProposalsRegistrationStarted
+// 3. Owner : nextWorkflow (-> ProposalsRegistrationStarted)
 // 4. Voters : addProposal with a string
-// 5. Owner : nextWorkflow -> ProposalsRegistrationEnded
-// 6. Owner : nextWorkflow -> VotingSessionStarted
-// 7. Voters : 
-// 8. Owner : nextWorkflow -> VotingSessionEnded
+// 5. Owner : nextWorkflow (-> ProposalsRegistrationEnded)
+// 6. Owner : nextWorkflow (-> VotingSessionStarted)
+// 7. Voters : vote for best proposal
+// 8. Owner : nextWorkflow (-> VotingSessionEnded)
 // 9. Owner : getWinner
+// Use getWorkflow to know the current state 
 
 pragma solidity 0.8.17;
 
@@ -46,6 +47,7 @@ contract Voting is Ownable {
     mapping (address => Voter) public listVoter;
     address[] public listAddress;
     Proposal[] public listProposal;
+    /* not needed in final app ... but easier to debug - table string with all proposal */
     string[] public proposalTable;
 
     event VoterRegistered(address voterAddress); 
@@ -53,7 +55,8 @@ contract Voting is Ownable {
     event ProposalRegistered(uint proposalId);
     event Voted (address voter, uint proposalId);
 
-    /** Add a voter, only possible by the Admin */
+    /** Add a voter, only possible by the Admin 
+     */
     function addVoter(address _address) public onlyOwner {
         require(_address != address(0),"Invalid address !");
         listVoter[_address].isRegistered = true;
@@ -82,9 +85,16 @@ contract Voting is Ownable {
         for (uint i; i<listAddress.length;i++) {
             listAddress.pop();
         }
+
+        /* clear debug table */
+        for (uint i; i<proposalTable.length;i++) {
+            proposalTable.pop();
+        }        
     }
 
-    /* Just switch to the next state */
+    /* Just switch to the next state 
+     * If we reach the end of state, it roll over 
+     */
     function nextWorkflow() public onlyOwner {
         WorkflowStatus previousState = currentState;
 
@@ -96,10 +106,15 @@ contract Voting is Ownable {
             /* increment to the next state */
             currentState = WorkflowStatus(uint(currentState)+1);
 
+        /* evantually we can automate some stuff here ...
+           i.e. on "VotingSessionEnded" we can call getWinner() */    
+
         emit WorkflowStatusChange(previousState, currentState);    
     }
 
-
+    /** Get the current workflow state 
+    * @return the current state as a string
+    */
     function getWorkflow() public view onlyOwner returns (string memory) {
         if ( currentState == WorkflowStatus.RegisteringVoters)
             return "RegisteringVoters";
@@ -150,6 +165,7 @@ contract Voting is Ownable {
 
     /** Function to get all proposals
      *  only for voters and if we are in the Voting Session started 
+     * @return a string array with all proposal
      */
     function getProposal() public checkState(WorkflowStatus.VotingSessionStarted) checkVoter returns (string[] memory) {        
         for (uint i; i<listProposal.length;i++) {
@@ -159,10 +175,11 @@ contract Voting is Ownable {
         return proposalTable;
     }
 
-    /** Function to get all proposals
+    /** Function to get the array of proposal
      *  only for voters and if we are in the Voting Session started 
+     * @return array with the list of proposal
      */
-    function getStProposal() public view checkState(WorkflowStatus.VotingSessionStarted) checkVoter returns (Proposal[] memory) {        
+    function getArrayOfProposal() public view checkState(WorkflowStatus.VotingSessionStarted) checkVoter returns (Proposal[] memory) {        
         return listProposal;
     }
 
@@ -181,6 +198,7 @@ contract Voting is Ownable {
     }
 
     /** Get the vote result
+     * @return the proposal ID of the winner 
      */
     function getWinner() public view checkState(WorkflowStatus.VotesTallied) onlyOwner returns (uint) { 
         require (listProposal.length>0, "There are no proposal !");
